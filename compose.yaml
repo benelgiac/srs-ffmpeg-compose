@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  srs:
+    image: ms/srs:5
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "1935:1935"
+      - "1985:1985"
+      - "${SRS_PORT}:8080"
+      - "8000:8000/udp"
+      - "10080:10080/udp"
+    stdin_open: true
+    tty: true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:1985/api/v1/versions"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  ffmpeg:
+    image: ghcr.io/linuxserver/ffmpeg:6.1.1
+    command: ["-stream_loop", "-1", "-re", "-i", "/sources/source.flv", "-c", "copy", "-f", "flv", "-y", "rtmp://srs/live/livestream"]
+    volumes:
+    - ./sources:/sources
+    depends_on:
+      srs:
+        condition: service_healthy
+
